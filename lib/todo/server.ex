@@ -1,12 +1,8 @@
 defmodule Todo.Server do
   use GenServer
 
-	def start do
-		GenServer.start(Todo.Server, nil)
-	end
-
-  def init(_) do
-    {:ok, Todo.List.new}
+  def start(name) do
+    GenServer.start(Todo.Server, name)
   end
 
   def add_entry(todo_server, new_entry) do
@@ -30,21 +26,34 @@ defmodule Todo.Server do
 		GenServer.cast(todo_server, {:delete_entry, entry_id})
 	end
 
-	# Server TodoList functions
-	def handle_cast(request, todo_list) do
+	# Callbacks
+
+  def init(name) do
+    {:ok, {name, Todo.Database.get(name) || Todo.List.new}}
+  end
+
+  # handle_cast(request, state)
+	def handle_cast(request, {name, todo_list}) do
     case request do
       {:add_entry, new_entry} ->
-        {:noreply, Todo.List.add_entry(todo_list, new_entry)}
+        new_state = Todo.List.add_entry(todo_list, new_entry)
+        Todo.Database.store(name, new_state)
+        {:noreply, {name, new_state}}
       {:delete_entry, entry_id} ->
-        {:noreply, Todo.List.delete_entry(todo_list, entry_id)}
+        new_state = Todo.List.delete_entry(todo_list, entry_id)
+        Todo.Database.store(name, new_state)
+        {:noreply, new_state}
       {:update_entry, entry_id, updater_fun} ->
-        {:noreply, Todo.List.update_entry(todo_list, entry_id, updater_fun)}
+        new_state = Todo.List.update_entry(todo_list, entry_id, updater_fun)
+        Todo.Database.store(name, new_state)
+        {:noreply, new_state}
       invalid_request ->
         {:noreply, todo_list}
     end
   end
 
-  def handle_call({:entries, date}, _, todo_list) do
-    {:reply, Todo.List.entries(todo_list, date), todo_list}
+  # handle_call(request, from, state)
+  def handle_call({:entries, date}, _, {name, todo_list}) do
+    {:reply, Todo.List.entries(todo_list, date), {name, todo_list}}
   end
 end
