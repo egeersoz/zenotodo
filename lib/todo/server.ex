@@ -1,8 +1,9 @@
+# Keeps a single instance of the Todo.List abstraction.
 defmodule Todo.Server do
   use GenServer
 
-  def start(name) do
-    GenServer.start(Todo.Server, name)
+  def start_link(name) do
+    GenServer.start_link(Todo.Server, name)
   end
 
   def add_entry(todo_server, new_entry) do
@@ -29,6 +30,7 @@ defmodule Todo.Server do
 	# Callbacks
 
   def init(name) do
+    IO.puts "Starting Todo Server for #{name}."
     {:ok, {name, Todo.Database.get(name) || Todo.List.new}}
   end
 
